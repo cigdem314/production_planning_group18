@@ -854,19 +854,33 @@ forecasting_server <- function(id) {
       if (file_ext() %in% c("xlsx", "xls")) readxl::excel_sheets(input$file$datapath) else NULL
     })
 
+    # First sheet that holds a numeric series (a workbook may start with a text sheet)
+    first_data_sheet <- reactive({
+      sh <- sheets()
+      if (is.null(sh)) return(NULL)
+      ok <- vapply(sh, function(x) {
+        df <- tryCatch(as.data.frame(readxl::read_excel(input$file$datapath, sheet = x)),
+                       error = function(e) NULL)
+        !is.null(df) && length(fc_numeric_cols(df)) > 0
+      }, logical(1))
+      if (any(ok)) sh[ok][1] else sh[1]
+    })
+
     output$sheet_ui <- renderUI({
       req(input$file)
       if (!is.null(sheets()))
-        selectInput(session$ns("sheet"), "Excel sheet", sheets())
+        selectInput(session$ns("sheet"), "Excel sheet", sheets(), selected = first_data_sheet())
     })
 
     table_in <- reactive({
       validate(need(input$file, "Upload an Excel or CSV file on the Forecasting > Data page to start."))
       ext <- file_ext()
       df <- if (ext %in% c("xlsx", "xls")) {
-        sh <- if (!is.null(input$sheet) && input$sheet %in% sheets()) input$sheet else sheets()[1]
-        tryCatch(as.data.frame(readxl::read_excel(input$file$datapath, sheet = sh)),
-                 error = function(e) NULL)
+        sh <- if (!is.null(input$sheet) && input$sheet %in% sheets()) input$sheet else first_data_sheet()
+        out <- tryCatch(as.data.frame(readxl::read_excel(input$file$datapath, sheet = sh)),
+                        error = function(e) NULL)
+        if (!is.null(out)) attr(out, "sheet") <- sh
+        out
       } else {
         tryCatch(fc_read_csv(input$file$datapath, input$csv_sep, input$csv_dec),
                  error = function(e) NULL)
@@ -889,8 +903,11 @@ forecasting_server <- function(id) {
 
     series <- reactive({
       df <- table_in()
+      sh <- attr(df, "sheet")
       validate(need(length(fc_numeric_cols(df)) > 0,
-                    "No numeric column with at least 3 values was found."))
+                    if (is.null(sh)) "No numeric column with at least 3 values was found in the file."
+                    else paste0("The sheet '", sh, "' has no numeric column with at least 3 values. ",
+                                "Choose another sheet in the 'Excel sheet' box.")))
       req(input$col, input$col %in% names(df))
       d <- fc_as_num(df[[input$col]])
       d <- d[!is.na(d)]
@@ -933,9 +950,16 @@ forecasting_server <- function(id) {
         msg <- c(msg, paste0("CSV read with ", attr(table_in(), "csv_info"), "."))
       tags$div(lapply(msg, tags$p))
     })
+    # Data-page outputs below stay empty when there is a problem;
+    # the message is shown once, above them (data_info).
+    series_quiet <- function() {
+      r <- tryCatch(series(), error = function(e) NULL)
+      req(r)
+      r
+    }
     output$data_plot <- renderPlot({
       req(input$file)
-      d <- series()
+      d <- series_quiet()
       par(mar = c(4, 4, 1, 1))
       plot(seq_along(d), d, type = "o", pch = 19, col = "grey25",
            xlab = "Period", ylab = "Value")
@@ -943,7 +967,7 @@ forecasting_server <- function(id) {
     })
     output$data_summary <- renderTable({
       req(input$file)
-      d <- series()
+      d <- series_quiet()
       tr <- fc_line(d, seq_along(d))
       data.frame("n" = length(d), "Mean" = fc_fmt(mean(d), 3),
                  "Std. deviation" = fc_fmt(sd(d), 3),
@@ -953,7 +977,8 @@ forecasting_server <- function(id) {
     })
     output$data_table <- renderTable({
       req(input$file)
-      data.frame("Period" = seq_along(series()), "Value" = series(), check.names = FALSE)
+      d <- series_quiet()
+      data.frame("Period" = seq_along(d), "Value" = d, check.names = FALSE)
     })
 
     finish <- function(r, d) {
