@@ -1478,24 +1478,6 @@
     "app.R": {
       "checksum": "ee8cacd66db87e18a1a87d6e49710b3c"
     },
-    "Bilgisayar.lnk": {
-      "checksum": "9277b4e4c49e1dd9b33adcfd042b2274"
-    },
-    "desktop.ini": {
-      "checksum": "9e36cc3537ee9ee1e3b10fa4e761045b"
-    },
-    "forecasting.R": {
-      "checksum": "5d81959511a9c527f6faf95b7ab09cc6"
-    },
-    "Graduation Project/Artificial Intelligence for Predictive Maintenance of.pdf": {
-      "checksum": "c1f37b8743af29f6f70d189100041e17"
-    },
-    "Graduation Project/Predictive Maintenance of Armoured Vehicles using.pdf": {
-      "checksum": "deccb8b5bd41daa6594931e13e65eacf"
-    },
-    "ogrenme.R": {
-      "checksum": "b708b3a73bb63fa0c211c696cf939568"
-    },
     "R/forecasting.R": {
       "checksum": "5d81959511a9c527f6faf95b7ab09cc6"
     },
@@ -1504,30 +1486,6 @@
     },
     "README.md": {
       "checksum": "8ff8331f0fc75512ec02c7f172c66c4d"
-    },
-    "sertifikalar/Rana Açıkkar- Denizaşırı Online Staj Başarı Sertifikası.pdf": {
-      "checksum": "c5062f9ed944538ecc050c62553ec364"
-    },
-    "sertifikalar/Rana AÇIKKAR- İlerisi Gençlik Bootcamp Başarı Sertifikası.pdf": {
-      "checksum": "2248be11d3f3de3e3d9f13b5710247a2"
-    },
-    "sertifikalar/Rana AÇIKKAR-Future Role Model Women in Tech Program Sertifika.pdf": {
-      "checksum": "0a56f2761998a64c2c840b57015bebb8"
-    },
-    "sertifikalar/Rana AÇIKKAR - 2026-03-11 - MIUUL.pdf": {
-      "checksum": "609fd75bb97d1230e1d5b7f3591acb34"
-    },
-    "sertifikalar/Rana AÇIKKAR - 2026-03-30 - MIUUL.pdf": {
-      "checksum": "fba8e696196ac2b450fcf5a1741cc12c"
-    },
-    "sertifikalar/Rana Açıkkar - KAMPÜSS.pdf": {
-      "checksum": "c7e74a94f906e751b4054e017e4c500d"
-    },
-    "SUNUM SON.pdf": {
-      "checksum": "527d2924b07404b3a6fe357d49331657"
-    },
-    "Zoom Workplace.lnk": {
-      "checksum": "9cc2e3c2ddf2b11529ffa1bea37fd33e"
     }
   },
   "users": null
