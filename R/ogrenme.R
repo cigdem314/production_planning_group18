@@ -12,6 +12,6 @@ learning_server <- function(id) {
       b <- -log(input$L) / log(2)
       u <- 1:50
       plot(u, 100 * u^(-b), type = "l", xlab = "Unit number", ylab = "Time per unit (hours)")
-    })ta
+    })
   })
 }
