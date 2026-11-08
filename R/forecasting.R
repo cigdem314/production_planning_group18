@@ -2,8 +2,8 @@
 # Module: Forecasting (Nahmias, Chapter 2)  --  Assignment 2
 #
 # Menu "Forecasting" in the navbar:
-#   Data                 upload Excel / CSV (or use sample data), pick the
-#                        series, set horizon, season length, error window
+#   Data                 upload Excel / CSV, pick the sheet and the series,
+#                        set horizon, season length, error window
 #   Stationary series    Moving Average, Weighted Moving Average,
 #                        Simple Exponential Smoothing, Seasonal Factors
 #                        (quick and dirty method)
@@ -21,30 +21,6 @@
 # All helper functions start with fc_ so they do not clash with
 # functions of other modules.
 # =====================================================================
-
-
-# ---------------------------------------------------------------------
-# 0) SAMPLE DATA (examples from the lecture slides)
-# ---------------------------------------------------------------------
-fc_samples <- list(
-  "Aircraft engine failures (8 quarters)" =
-    c(200, 250, 175, 186, 225, 285, 305, 190),
-  "Wallace Garden Supply shed sales (12 months)" =
-    c(10, 12, 13, 16, 19, 23, 26, 30, 28, 18, 16, 14),
-  "Spare part demand with trend (6 weeks)" =
-    c(46, 48, 56, 59, 67, 69),
-  "Quarterly demand, trend + season (16 quarters, N = 4)" =
-    c(10, 20, 26, 17, 12, 23, 30, 22, 15, 27, 34, 24, 18, 30, 38, 28),
-  "Three shifts, four days (12 shifts, N = 3)" =
-    c(30, 42, 54, 33, 45, 54, 36, 45, 60, 36, 48, 63),
-  "Cars crossing a bridge (4 weeks x 5 days, N = 5)" =
-    c(16.2, 12.2, 14.2, 17.3, 22.5,  17.3, 11.5, 15.0, 17.6, 23.5,
-      14.6, 13.1, 13.0, 16.9, 21.9,  16.1, 11.8, 12.9, 16.6, 24.3),
-  "Weekly demand, autocorrelated (40 weeks, for Box-Jenkins)" =
-    c(104, 111, 105, 107, 98, 99, 93, 96, 97, 102, 100, 95, 92, 85, 99,
-      88, 92, 99, 99, 91, 97, 106, 112, 100, 101, 106, 120, 115, 112, 118,
-      105, 102, 90, 91, 90, 90, 98, 103, 105, 102)
-)
 
 
 # ---------------------------------------------------------------------
@@ -651,22 +627,15 @@ forecasting_ui <- function(id) {
   data_page <- sidebarLayout(
     sidebarPanel(width = 4,
       h4("1. Data"),
-      radioButtons(ns("src"), NULL,
-                   choices = c("Use sample data from the lectures" = "sample",
-                               "Upload a file (Excel or CSV)" = "file")),
-      conditionalPanel("input.src == 'sample'", ns = ns,
-        selectInput(ns("sample"), "Sample series", names(fc_samples))),
-      conditionalPanel("input.src == 'file'", ns = ns,
-        fileInput(ns("file"), "Excel (.xlsx, .xls) or CSV (.csv, .txt) file",
-                  accept = c(".xlsx", ".xls", ".csv", ".txt")),
-        uiOutput(ns("sheet_ui")),
-        selectInput(ns("col"), "Series (column) to forecast", choices = NULL),
-        selectInput(ns("csv_sep"), "CSV separator",
-                    c("Auto-detect" = "auto", "Comma (,)" = ",",
-                      "Semicolon (;)" = ";", "Tab" = "\t")),
-        selectInput(ns("csv_dec"), "CSV decimal mark",
-                    c("Auto-detect" = "auto", "Point (.)" = ".", "Comma (,)" = ","))
-      ),
+      fileInput(ns("file"), "Upload an Excel (.xlsx, .xls) or CSV (.csv, .txt) file",
+                accept = c(".xlsx", ".xls", ".csv", ".txt")),
+      uiOutput(ns("sheet_ui")),
+      selectInput(ns("col"), "Series (column) to forecast", choices = NULL),
+      selectInput(ns("csv_sep"), "CSV separator",
+                  c("Auto-detect" = "auto", "Comma (,)" = ",",
+                    "Semicolon (;)" = ";", "Tab" = "\t")),
+      selectInput(ns("csv_dec"), "CSV decimal mark",
+                  c("Auto-detect" = "auto", "Point (.)" = ".", "Comma (,)" = ",")),
       hr(),
       h4("2. Settings used by all methods"),
       numericInput(ns("h"), "Forecast horizon (number of future periods)", 4, min = 1, max = 60, step = 1),
@@ -886,17 +855,13 @@ forecasting_server <- function(id) {
     })
 
     output$sheet_ui <- renderUI({
-      req(input$src == "file", input$file)
+      req(input$file)
       if (!is.null(sheets()))
         selectInput(session$ns("sheet"), "Excel sheet", sheets())
     })
 
     table_in <- reactive({
-      if (input$src == "sample") {
-        s <- fc_samples[[input$sample]]
-        return(data.frame(Period = seq_along(s), Demand = s))
-      }
-      req(input$file)
+      validate(need(input$file, "Upload an Excel or CSV file on the Forecasting > Data page to start."))
       ext <- file_ext()
       df <- if (ext %in% c("xlsx", "xls")) {
         sh <- if (!is.null(input$sheet) && input$sheet %in% sheets()) input$sheet else sheets()[1]
@@ -912,7 +877,6 @@ forecasting_server <- function(id) {
     })
 
     observeEvent(table_in(), {
-      if (input$src != "file") return()
       cols <- fc_numeric_cols(table_in())
       lc <- tolower(cols)
       pref <- cols[grepl("demand|sales|value|failure|usage|cars|order|series", lc)]
@@ -925,14 +889,10 @@ forecasting_server <- function(id) {
 
     series <- reactive({
       df <- table_in()
-      if (input$src == "sample") {
-        d <- df$Demand
-      } else {
-        validate(need(length(fc_numeric_cols(df)) > 0,
-                      "No numeric column with at least 3 values was found."))
-        req(input$col, input$col %in% names(df))
-        d <- fc_as_num(df[[input$col]])
-      }
+      validate(need(length(fc_numeric_cols(df)) > 0,
+                    "No numeric column with at least 3 values was found."))
+      req(input$col, input$col %in% names(df))
+      d <- fc_as_num(df[[input$col]])
       d <- d[!is.na(d)]
       validate(need(length(d) >= 3, "The series needs at least 3 numeric values."))
       d
@@ -961,18 +921,20 @@ forecasting_server <- function(id) {
     })
 
     output$data_title <- renderText({
-      if (input$src == "sample") paste("Sample data:", input$sample)
-      else paste0("File: ", input$file$name,
-                  if (!is.null(input$col)) paste0("  -  series: ", input$col) else "")
+      validate(need(input$file, "No data yet: upload an Excel or CSV file."))
+      paste0("File: ", input$file$name,
+             if (!is.null(input$col) && nzchar(input$col)) paste0("  -  series: ", input$col) else "")
     })
     output$data_info <- renderUI({
+      req(input$file)
       d <- series()
       msg <- paste0(length(d), " observations will be used by every forecasting page.")
-      if (input$src == "file" && !(file_ext() %in% c("xlsx", "xls")))
+      if (!(file_ext() %in% c("xlsx", "xls")))
         msg <- c(msg, paste0("CSV read with ", attr(table_in(), "csv_info"), "."))
       tags$div(lapply(msg, tags$p))
     })
     output$data_plot <- renderPlot({
+      req(input$file)
       d <- series()
       par(mar = c(4, 4, 1, 1))
       plot(seq_along(d), d, type = "o", pch = 19, col = "grey25",
@@ -980,6 +942,7 @@ forecasting_server <- function(id) {
       abline(h = mean(d), lty = 3, col = "grey60")
     })
     output$data_summary <- renderTable({
+      req(input$file)
       d <- series()
       tr <- fc_line(d, seq_along(d))
       data.frame("n" = length(d), "Mean" = fc_fmt(mean(d), 3),
@@ -989,6 +952,7 @@ forecasting_server <- function(id) {
                  check.names = FALSE)
     })
     output$data_table <- renderTable({
+      req(input$file)
       data.frame("Period" = seq_along(series()), "Value" = series(), check.names = FALSE)
     })
 
